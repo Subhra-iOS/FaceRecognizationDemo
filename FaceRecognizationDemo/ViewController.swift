@@ -103,11 +103,54 @@ extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
         let ciImage =  CIImage(cvImageBuffer: pixelBuffer!, options: attachments as! [CIImageOption : Any]?)
         
         //leftMirrored for front camera
-        let ciImageWithOrientation = ciImage.oriented(forExifOrientation: Int32(UIImage.Orientation.leftMirrored.rawValue))
-        detectFace(on: ciImageWithOrientation)
+        let ciImageWithOrientation : CIImage = ciImage.oriented(forExifOrientation: Int32(UIImage.Orientation.leftMirrored.rawValue))
+        //detectFace(on: ciImageWithOrientation)
+        
+        self.detectHumanFaceWith(ciImageWithOrientation)
         
     }
 }
+
+extension ViewController{
+    
+    private func detectHumanFaceWith(_ image : CIImage) -> Void{
+        
+        let request : VNDetectFaceRectanglesRequest = VNDetectFaceRectanglesRequest { (request, error) in
+            
+            if let detectionError = error{
+                print("Face Detection Error : \(detectionError)")
+            }else{
+                
+                request.results?.forEach({ (result) in
+                    
+                    DispatchQueue.main.async {
+                        
+                        guard let faceObservation : VNFaceObservation = result as? VNFaceObservation else { return }
+                        print("\(faceObservation.boundingBox)")
+                        
+                    }
+                    
+                })
+            }
+            
+        }
+        
+        DispatchQueue.global(qos: .background).async {
+            
+            let handler : VNImageRequestHandler = VNImageRequestHandler(ciImage: image, options: [:])
+            
+            do{
+                try handler.perform([request])
+            }catch let requestError {
+                print("Fail to process request with error : \(requestError)")
+            }
+            
+        }
+        
+    }
+    
+}
+
 
 extension ViewController {
     
