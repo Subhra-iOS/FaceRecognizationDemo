@@ -52,13 +52,13 @@ class ViewController: UIViewController {
         
         view.layer.addSublayer(previewLayer)
         
-        shapeLayer.strokeColor = UIColor.red.cgColor
-        shapeLayer.lineWidth = 2.0
+//        shapeLayer.strokeColor = UIColor.red.cgColor
+//        shapeLayer.lineWidth = 2.0
+//
+//        //needs to filp coordinate system for Vision
+//        shapeLayer.setAffineTransform(CGAffineTransform(scaleX: -1, y: -1))
         
-        //needs to filp coordinate system for Vision
-        shapeLayer.setAffineTransform(CGAffineTransform(scaleX: -1, y: -1))
-        
-        view.layer.addSublayer(shapeLayer)
+     //   view.layer.addSublayer(shapeLayer)
     }
     
     func sessionPrepare() {
