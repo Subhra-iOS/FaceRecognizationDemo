@@ -7,14 +7,207 @@
 //
 
 import UIKit
+import AVFoundation
+import Vision
 
 class ViewController: UIViewController {
 
+   private var session: AVCaptureSession?
+   private let shapeLayer = CAShapeLayer()
+    
+   private let faceDetection = VNDetectFaceRectanglesRequest()
+   private let faceLandmarks = VNDetectFaceLandmarksRequest()
+   private let faceLandmarksDetectionRequest = VNSequenceRequestHandler()
+   private let faceDetectionRequest = VNSequenceRequestHandler()
+    
+    lazy var previewLayer: AVCaptureVideoPreviewLayer? = {
+        guard let session = self.session else { return nil }
+        
+        var previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer.videoGravity = .resizeAspectFill
+        
+        return previewLayer
+    }()
+    
+    var frontCamera: AVCaptureDevice? = {
+        return AVCaptureDevice.default(AVCaptureDevice.DeviceType.builtInWideAngleCamera, for: AVMediaType.video, position: .front)
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        
+        sessionPrepare()
+        session?.startRunning()
     }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.frame
+        shapeLayer.frame = view.frame
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard let previewLayer = previewLayer else { return }
+        
+        view.layer.addSublayer(previewLayer)
+        
+        shapeLayer.strokeColor = UIColor.red.cgColor
+        shapeLayer.lineWidth = 2.0
+        
+        //needs to filp coordinate system for Vision
+        shapeLayer.setAffineTransform(CGAffineTransform(scaleX: -1, y: -1))
+        
+        view.layer.addSublayer(shapeLayer)
+    }
+    
+    func sessionPrepare() {
+        session = AVCaptureSession()
+        guard let session = session, let captureDevice = frontCamera else { return }
+        
+        do {
+            let deviceInput = try AVCaptureDeviceInput(device: captureDevice)
+            session.beginConfiguration()
+            
+            if session.canAddInput(deviceInput) {
+                session.addInput(deviceInput)
+            }
+            
+            let output = AVCaptureVideoDataOutput()
+            output.videoSettings = [
+                String(kCVPixelBufferPixelFormatTypeKey) : Int(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
+            ]
+            
+            output.alwaysDiscardsLateVideoFrames = true
+            
+            if session.canAddOutput(output) {
+                session.addOutput(output)
+            }
+            
+            session.commitConfiguration()
+            let queue = DispatchQueue(label: "output.queue")
+            output.setSampleBufferDelegate(self , queue: queue)
+            print("setup delegate")
+        } catch {
+            print("can't setup session")
+        }
+    }
+}
 
+extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
+    
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        
+        let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+        let attachments = CMCopyDictionaryOfAttachments(allocator: kCFAllocatorDefault, target: sampleBuffer, attachmentMode: kCMAttachmentMode_ShouldPropagate)
+        let ciImage =  CIImage(cvImageBuffer: pixelBuffer!, options: attachments as! [CIImageOption : Any]?)
+        
+        //leftMirrored for front camera
+        let ciImageWithOrientation = ciImage.oriented(forExifOrientation: Int32(UIImage.Orientation.leftMirrored.rawValue))
+        detectFace(on: ciImageWithOrientation)
+        
+    }
+}
 
+extension ViewController {
+    
+    func detectFace(on image: CIImage) {
+        try? faceDetectionRequest.perform([faceDetection], on: image)
+        if let results = faceDetection.results as? [VNFaceObservation] {
+            if !results.isEmpty {
+              faceLandmarks.inputFaceObservations = results
+                detectLandmarks(on: image)
+                
+               DispatchQueue.main.async {
+                    self.shapeLayer.sublayers?.removeAll()
+                }
+            }else{
+                
+                print("No Human face detected.")
+            }
+        }
+    }
+    
+    func detectLandmarks(on image: CIImage) {
+        try? faceLandmarksDetectionRequest.perform([faceLandmarks], on: image)
+        if let landmarksResults = faceLandmarks.results as? [VNFaceObservation] {
+            for _ in landmarksResults {
+                DispatchQueue.main.async {
+                    if let _ = self.faceLandmarks.inputFaceObservations?.first?.boundingBox {
+                        print("\(String(describing: self.faceLandmarks.inputFaceObservations))")
+                    // if let payloadStringValue = self.faceLandmarks.inputFaceObservations?.first?.payloadStringValue {
+                       /* print("\(boundingBox)")
+                        //different types of landmarks
+                        let faceContour = observation.landmarks?.faceContour
+                        let leftEye = observation.landmarks?.leftEye
+                        let rightEye = observation.landmarks?.rightEye
+                        let nose = observation.landmarks?.nose
+                        let lips = observation.landmarks?.innerLips
+                        let leftEyebrow = observation.landmarks?.leftEyebrow
+                        let rightEyebrow = observation.landmarks?.rightEyebrow
+                        let noseCrest = observation.landmarks?.noseCrest
+                        let outerLips = observation.landmarks?.outerLips
+                        
+                        print("\(String(describing: faceContour)), \(String(describing: leftEye)), \(String(describing: rightEye)), \(String(describing: nose)), \(String(describing: lips)), \(String(describing: leftEyebrow)), \(String(describing: rightEyebrow)), \(String(describing: noseCrest)), \(String(describing: outerLips))")*/
+                        
+                        print("Face has been detected.")
+                        //print("\(payloadStringValue)")
+                        
+                    }else{
+                        
+                        
+                    }
+                    
+                }
+            }
+        }else{
+            
+        }
+    }
+    
+    /*func convertPointsForFace(_ landmark: VNFaceLandmarkRegion2D?, _ boundingBox: CGRect) {
+        if let points = landmark?.points, let count = landmark?.pointCount {
+            let convertedPoints = convert(points, with: count)
+            
+            let faceLandmarkPoints = convertedPoints.map { (point: (x: CGFloat, y: CGFloat)) -> (x: CGFloat, y: CGFloat) in
+                let pointX = point.x * boundingBox.width + boundingBox.origin.x
+                let pointY = point.y * boundingBox.height + boundingBox.origin.y
+                
+                return (x: pointX, y: pointY)
+            }
+            
+            DispatchQueue.main.async {
+                self.draw(points: faceLandmarkPoints)
+            }
+        }
+    }
+    
+    func draw(points: [(x: CGFloat, y: CGFloat)]) {
+        let newLayer = CAShapeLayer()
+        newLayer.strokeColor = UIColor.red.cgColor
+        newLayer.lineWidth = 2.0
+        
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: points[0].x, y: points[0].y))
+        for i in 0..<points.count - 1 {
+            let point = CGPoint(x: points[i].x, y: points[i].y)
+            path.addLine(to: point)
+            path.move(to: point)
+        }
+        path.addLine(to: CGPoint(x: points[0].x, y: points[0].y))
+        newLayer.path = path.cgPath
+        
+        shapeLayer.addSublayer(newLayer)
+    }
+    
+    
+    func convert(_ points: UnsafePointer<vector_float2>, with count: Int) -> [(x: CGFloat, y: CGFloat)] {
+        var convertedPoints = [(x: CGFloat, y: CGFloat)]()
+        for i in 0...count {
+            convertedPoints.append((CGFloat(points[i].x), CGFloat(points[i].y)))
+        }
+        
+        return convertedPoints
+    }*/
 }
 
