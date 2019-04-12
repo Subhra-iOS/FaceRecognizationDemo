@@ -10,11 +10,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "FaceRecognizationDemo/ViewController.swift"
-            timestampString = "576761224.314229"
+            timestampString = "576764672.626137"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "168"
-            endingLineNumber = "168"
+            startingLineNumber = "186"
+            endingLineNumber = "186"
             landmarkName = "detectHumanFaceWith(_:)"
             landmarkType = "7">
          </BreakpointContent>

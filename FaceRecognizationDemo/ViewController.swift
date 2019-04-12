@@ -137,10 +137,22 @@ extension ViewController{
                             self.faceDetectionType = .detected
                             let result = detectResults.first!
                             DispatchQueue.main.async {
-                                
+                                let rectView : UIView = UIView()
+                                rectView.backgroundColor = UIColor.red
+                                rectView.tag = 100
+                                rectView.alpha = 0.5
                                 guard let faceObservation : VNFaceObservation = result as? VNFaceObservation else { return }
                                 print("\(faceObservation.boundingBox)")
+                                
+                                let xOrigin = self.view.frame.size.width * faceObservation.boundingBox.origin.x
+                                let yOrigin = self.view.frame.size.width * (1 - faceObservation.boundingBox.origin.y)
+                                let width = self.view.frame.size.width *  faceObservation.boundingBox.size.width
+                                 let height = self.view.frame.size.height * faceObservation.boundingBox.size.height
+                                
+                                rectView.frame = CGRect(x: xOrigin, y: yOrigin, width: width, height: height)
+                                
                                 print("Face  detected")
+                                self.view.addSubview(rectView)
                             }
                     }
                     
@@ -149,9 +161,15 @@ extension ViewController{
                     switch self.faceDetectionType{
                         case .detected :
                              print("No face detected.")
+                             DispatchQueue.main.async {
+                                let rectView = self.view.viewWithTag(100)
+                                if let _view = rectView{
+                                    _view.removeFromSuperview()
+                                }
+                             }
+                            
                             self.faceDetectionType = .nonDetected
-                        case .nonDetected :
-                                self.faceDetectionType = .detected
+                        case .nonDetected : break
                          case .unknown : break
                     }
                 }
