@@ -10,6 +10,12 @@ import UIKit
 import AVFoundation
 import Vision
 
+private enum FaceDetection : Int64{
+    case detected
+    case nonDetected
+    case unknown
+}
+
 class ViewController: UIViewController {
 
    private var session: AVCaptureSession?
@@ -19,6 +25,7 @@ class ViewController: UIViewController {
    private let faceLandmarks = VNDetectFaceLandmarksRequest()
    private let faceLandmarksDetectionRequest = VNSequenceRequestHandler()
    private let faceDetectionRequest = VNSequenceRequestHandler()
+    private var  faceDetectionType : FaceDetection = .nonDetected
     
     lazy var previewLayer: AVCaptureVideoPreviewLayer? = {
         guard let session = self.session else { return nil }
@@ -121,16 +128,52 @@ extension ViewController{
                 print("Face Detection Error : \(detectionError)")
             }else{
                 
-                request.results?.forEach({ (result) in
+                if let detectResults = request.results, detectResults.count > 0{
                     
-                    DispatchQueue.main.async {
+                    switch self.faceDetectionType{
                         
-                        guard let faceObservation : VNFaceObservation = result as? VNFaceObservation else { return }
-                        print("\(faceObservation.boundingBox)")
-                        
+                        case .detected, .unknown : break
+                        case .nonDetected :
+                            self.faceDetectionType = .detected
+                            let result = detectResults.first!
+                            DispatchQueue.main.async {
+                                let rectView : UIView = UIView()
+                                rectView.backgroundColor = UIColor.red
+                                rectView.tag = 100
+                                rectView.alpha = 0.5
+                                guard let faceObservation : VNFaceObservation = result as? VNFaceObservation else { return }
+                                print("\(faceObservation.boundingBox)")
+                                
+                                let xOrigin = self.view.frame.size.width * faceObservation.boundingBox.origin.x
+                                let yOrigin = self.view.frame.size.width * (1 - faceObservation.boundingBox.origin.y)
+                                let width = self.view.frame.size.width *  faceObservation.boundingBox.size.width
+                                 let height = self.view.frame.size.height * faceObservation.boundingBox.size.height
+                                
+                                rectView.frame = CGRect(x: xOrigin, y: yOrigin, width: width, height: height)
+                                
+                                print("Face  detected")
+                                self.view.addSubview(rectView)
+                            }
                     }
                     
-                })
+                }else{
+                   
+                    switch self.faceDetectionType{
+                        case .detected :
+                             print("No face detected.")
+                             DispatchQueue.main.async {
+                                let rectView = self.view.viewWithTag(100)
+                                if let _view = rectView{
+                                    _view.removeFromSuperview()
+                                }
+                             }
+                            
+                            self.faceDetectionType = .nonDetected
+                        case .nonDetected : break
+                         case .unknown : break
+                    }
+                }
+                
             }
             
         }
@@ -152,7 +195,7 @@ extension ViewController{
 }
 
 
-extension ViewController {
+/*extension ViewController {
     
     func detectFace(on image: CIImage) {
         try? faceDetectionRequest.perform([faceDetection], on: image)
@@ -253,4 +296,4 @@ extension ViewController {
         return convertedPoints
     }*/
 }
-
+*/
