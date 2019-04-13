@@ -1,5 +1,4 @@
 
-<<<<<<< HEAD
 ## OS X files
 .DS_Store
 
@@ -30,8 +29,6 @@ build/
 *.dSYM
 
 xcuserdata/
-=======
 *.xcuserstate
-FaceRecognizationDemo.xcodeproj/project.xcworkspace/xcuserdata/arc.xcuserdatad/UserInterfaceState.xcuserstate
->>>>>>> 15ea16e5b31f53cf0dbfbf03f276e9175c775c65
+
 
