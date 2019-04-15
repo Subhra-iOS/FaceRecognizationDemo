@@ -119,7 +119,7 @@ extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
 }
 
 extension ViewController{
-    
+
     private func detectHumanFaceWith(_ image : CIImage) -> Void{
         
         let request : VNDetectFaceRectanglesRequest = VNDetectFaceRectanglesRequest { (request, error) in
@@ -145,10 +145,10 @@ extension ViewController{
                                 print("\(faceObservation.boundingBox)")
                                 
                                 let xOrigin = self.view.frame.size.width * faceObservation.boundingBox.origin.x
-                                let yOrigin = self.view.frame.size.width * (1 - faceObservation.boundingBox.origin.y)
-                                let width = self.view.frame.size.width *  faceObservation.boundingBox.size.width
                                  let height = self.view.frame.size.height * faceObservation.boundingBox.size.height
-                                
+                                let yOrigin = (self.view.frame.size.width * (1 - faceObservation.boundingBox.origin.y)) - height
+                                let width = self.view.frame.size.width *  faceObservation.boundingBox.size.width
+                       
                                 rectView.frame = CGRect(x: xOrigin, y: yOrigin, width: width, height: height)
                                 
                                 print("Face  detected")
